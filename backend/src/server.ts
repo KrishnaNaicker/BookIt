@@ -13,7 +13,7 @@ import promoRouter from './routes/promo';
 dotenv.config();
 
 const app: Express = express();
-const PORT = process.env.PORT || 5000;
+const PORT: number = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
 
 // Middleware - UPDATED CORS CONFIGURATION
 app.use(cors({
@@ -35,10 +35,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // Basic health check route
 app.get('/health', (_req: Request, res: Response) => {
-  res.json({
+  res.status(200).json({
     status: 'OK',
     message: 'BookIt API is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -87,17 +89,27 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     // Test database connection
+    console.log('🔄 Testing database connection...');
     await testConnection();
 
-    // Start listening
-    app.listen(PORT, () => {
+    // Start listening on 0.0.0.0 (IMPORTANT FOR RAILWAY)
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server is running on port ${PORT}`);
       console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`📚 API documentation: http://localhost:${PORT}/api`);
-      console.log(`🎯 Experiences: http://localhost:${PORT}/api/experiences`);
-      console.log(`📦 Bookings: http://localhost:${PORT}/api/bookings`);
-      console.log(`🎟️  Promo codes: http://localhost:${PORT}/api/promo`);
+      console.log(`🌐 Host: 0.0.0.0`);
+      console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`📚 API documentation: http://0.0.0.0:${PORT}/api`);
+      console.log(`🎯 Experiences: http://0.0.0.0:${PORT}/api/experiences`);
+      console.log(`📦 Bookings: http://0.0.0.0:${PORT}/api/bookings`);
+      console.log(`🎟️  Promo codes: http://0.0.0.0:${PORT}/api/promo`);
+    });
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM signal received: closing HTTP server');
+      server.close(() => {
+        console.log('HTTP server closed');
+      });
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
