@@ -26,14 +26,25 @@ if (isNaN(PORT) || PORT < 0 || PORT > 65535) {
 console.log(`📍 Using PORT: ${PORT}`);
 
 // Middleware - UPDATED CORS CONFIGURATION
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5176',
+  'http://localhost:3000',
+  ...(process.env.FRONTEND_URL?.split(',').map(url => url.trim()) || [])
+];
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5176',
-    'http://localhost:3000',
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    'https://bookit-frontend.vercel.app',
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`❌ Blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
