@@ -13,7 +13,17 @@ import promoRouter from './routes/promo';
 dotenv.config();
 
 const app: Express = express();
-const PORT: number = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+
+// Parse PORT correctly - Railway provides it as a string
+const PORT = parseInt(process.env.PORT || '5000', 10);
+
+// Validate PORT
+if (isNaN(PORT) || PORT < 0 || PORT > 65535) {
+  console.error(`❌ Invalid PORT: ${process.env.PORT}`);
+  process.exit(1);
+}
+
+console.log(`📍 Using PORT: ${PORT}`);
 
 // Middleware - UPDATED CORS CONFIGURATION
 app.use(cors({
@@ -40,7 +50,8 @@ app.get('/health', (_req: Request, res: Response) => {
     message: 'BookIt API is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
   });
 });
 
@@ -106,13 +117,21 @@ const startServer = async () => {
 
     // Graceful shutdown
     process.on('SIGTERM', () => {
-      console.log('SIGTERM signal received: closing HTTP server');
+      console.log('🛑 SIGTERM signal received: closing HTTP server');
       server.close(() => {
-        console.log('HTTP server closed');
+        console.log('✅ HTTP server closed');
       });
     });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
+
+    process.on('SIGINT', () => {
+      console.log('🛑 SIGINT signal received: closing HTTP server');
+      server.close(() => {
+        console.log('✅ HTTP server closed');
+        process.exit(0);
+      });
+    });
+  } catch (error: any) {
+    console.error('❌ Failed to start server:', error.message);
     process.exit(1);
   }
 };
